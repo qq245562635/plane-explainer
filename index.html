@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>小飞机图解</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=ZCOOL+KuaiLe&display=swap">
+</head>
+<body>
+<style>
+/* 布局：一张技术图版。左栏是步骤目录，右侧是讲解句、3D 舞台和参数标签，底部是核心原理。 */
+:root{
+  --paper:#ece6d8; --plate:#f7f3ea; --pad:#f6deb0; --ink:#1c2333; --muted:#6c6f77; --line:#cfc6b3;
+  --runway:#3b4252; --accent:#f2b437;
+  --accent-soft:color-mix(in srgb,var(--accent) 42%,var(--plate));
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono","Noto Sans SC",ui-monospace,Menlo,monospace;
+  --f-hand:"ZCOOL KuaiLe","Noto Sans SC","Kaiti SC",cursive;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f141d; --plate:#161d29; --pad:#223047; --ink:#e7e1d4; --muted:#909aa8; --line:#334057; --runway:#141a24; color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#0f141d; --plate:#161d29; --pad:#223047; --ink:#e7e1d4; --muted:#909aa8; --line:#334057; --runway:#141a24; color-scheme:dark}
+
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);padding-block:24px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.plate{max-width:1240px;margin:0 auto;border:2px solid var(--ink);border-radius:14px;background:var(--plate);
+  box-shadow:6px 6px 0 var(--ink);display:grid;grid-template-columns:250px minmax(0,1fr);overflow:hidden}
+.side{border-right:2px solid var(--ink);padding:24px 20px;display:flex;flex-direction:column;gap:18px}
+.fig{font:600 13px/1 var(--f-mono);letter-spacing:.12em;color:var(--muted)}
+h1{margin:0;font-size:30px;font-weight:700;line-height:1.2;text-wrap:balance}
+.steps{display:flex;flex-direction:column;gap:10px}
+.step{position:relative;overflow:hidden;display:flex;align-items:center;gap:10px;padding:9px 14px;border:2px solid var(--line);
+  border-radius:999px;background:transparent;color:var(--muted);font:500 15px/1.2 var(--f-mono);cursor:pointer;text-align:left;
+  transition:background .25s,border-color .25s,color .25s,box-shadow .25s}
+.step:hover{border-color:var(--muted);color:var(--ink)}
+.step:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.step .n{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--muted);color:var(--plate);font-size:12px;font-weight:600}
+.step.on{border-color:var(--ink);background:var(--accent-soft);color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.step.on .n{background:var(--ink)}
+.step .bar{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--ink);opacity:.55}
+.auto{display:flex;align-items:center;gap:8px;align-self:flex-start;border:0;background:none;color:var(--muted);font:500 13px var(--f-mono);cursor:pointer;padding:4px 0}
+.auto:hover{color:var(--ink)}
+.auto:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.auto i{width:10px;height:10px;border-radius:50%;background:var(--line);transition:background .2s}
+.auto.on i{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.note{margin-top:auto;font-size:12px;line-height:1.6;color:var(--muted)}
+
+.main{min-width:0;display:flex;flex-direction:column;gap:12px;padding:20px 24px 18px}
+.caption{margin:0;font-size:17px;line-height:1.65;min-height:3.3em;max-width:62ch;transition:opacity .3s}
+.stage{position:relative;width:100%;aspect-ratio:16/10;max-width:100%;border-radius:6px;overflow:hidden;touch-action:pan-y}
+.stage canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
+.layer{position:absolute;inset:0;pointer-events:none}
+.lbl{position:absolute;left:0;top:0;white-space:nowrap;font:24px/1 var(--f-hand);color:var(--ink);opacity:0;
+  transform:translate(-50%,-100%);text-shadow:0 0 3px var(--pad),0 0 6px var(--pad),0 0 10px var(--pad),2px 2px 0 var(--pad),-2px -2px 0 var(--pad),2px -2px 0 var(--pad),-2px 2px 0 var(--pad)}
+.lbl.hot{color:color-mix(in srgb,var(--accent) 55%,var(--ink))}
+.lbl.blue{color:#2f7fca}.lbl.red{color:#d9542f}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tag{display:inline-flex;gap:8px;align-items:baseline;padding:6px 12px;border:1.5px solid var(--ink);border-radius:6px;font:400 13px/1.2 var(--f-mono);
+  color:var(--muted);background:var(--plate);transition:background .25s;font-variant-numeric:tabular-nums}
+.tag b{font-weight:600;color:var(--ink)}
+.tag.hi{background:var(--accent-soft);color:var(--ink)}
+
+.idea{grid-column:1/-1;border-top:2px solid var(--ink);padding:18px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.idea p{margin:0;flex:1 1 420px;min-width:0;font-size:16px;line-height:1.7;max-width:70ch}
+.swatches{display:flex;align-items:center;gap:10px;font:600 12px var(--f-mono);letter-spacing:.12em;color:var(--muted)}
+.sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--ink);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--plate),0 0 0 5px var(--ink)}
+.sw:focus-visible{outline:3px solid var(--ink);outline-offset:4px}
+
+@media (max-width:820px){
+  body{padding-block:12px}
+  .plate{grid-template-columns:minmax(0,1fr);box-shadow:4px 4px 0 var(--ink)}
+  .side{border-right:0;border-bottom:2px solid var(--ink);padding:18px 16px;gap:12px}
+  h1{font-size:24px}
+  .steps{flex-direction:row;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+  .step{flex:none}
+  .note{display:none}
+  .main{padding:16px}
+  .caption{font-size:15px;min-height:5em}
+  .stage{aspect-ratio:4/3.4}
+  .lbl{font-size:17px}
+  .idea{padding:16px}
+  .idea p{font-size:15px}
+}
+@media (prefers-reduced-motion:reduce){.step,.tag,.caption{transition:none}}
+</style>
+
+<div class="plate">
+  <aside class="side">
+    <div class="fig">图 01 · 固定翼小飞机</div>
+    <h1>一架小飞机</h1>
+    <div class="steps" id="steps" role="tablist" aria-label="讲解步骤"></div>
+    <button class="auto on" id="auto" type="button" aria-pressed="true"><i></i><span>自动讲解</span></button>
+    <p class="note">示意机型与示意数据，不对应任何真实型号。可用 ← → 键切换步骤。</p>
+  </aside>
+  <section class="main">
+    <p class="caption" id="caption" aria-live="polite"></p>
+    <div class="stage" id="stage"><div class="layer" id="layer"></div></div>
+    <div class="tags" id="tags"></div>
+  </section>
+  <footer class="idea">
+    <p><b>核心原理：</b>飞机靠机翼产生<b>升力</b>，靠螺旋桨产生<b>推力</b>，靠副翼、升降舵、方向舵三组舵面控制<b>姿态</b>。升力大于重力就能离地，推力大于阻力就能加速。</p>
+    <div class="swatches" id="swatches">涂装</div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const lerp=(a,b,k)=>a+(b-a)*k;
+const sm=x=>x*x*(3-2*x);
+const seg=(t,a,b)=>sm(clamp((t-a)/(b-a)));
+const D=Math.PI/180, REST=1.05, V3=THREE.Vector3;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- renderer ---------- */
+const stage=$('#stage'), layer=$('#layer');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+const DPR=Math.min(devicePixelRatio||1,2);
+renderer.setPixelRatio(DPR);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+stage.insertBefore(renderer.domElement,layer);
+const scene=new THREE.Scene();
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,0.1,400);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0xd9ccb0,0.62));
+const sun=new THREE.DirectionalLight(0xffffff,0.72);
+sun.position.set(7,18,9); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-18,right:18,top:18,bottom:-18,near:1,far:60}); sun.shadow.radius=4;
+scene.add(sun);
+
+const grad=new THREE.DataTexture(new Uint8Array([125,125,125,255,205,205,205,255,255,255,255,255]),3,1,THREE.RGBAFormat);
+grad.minFilter=grad.magFilter=THREE.NearestFilter; grad.needsUpdate=true;
+
+const INK=new THREE.Color(0x1c2333);
+const outlineMat=new THREE.ShaderMaterial({side:THREE.BackSide,
+  uniforms:{th:{value:1.5*DPR},res:{value:new THREE.Vector2(1,1)},col:{value:INK}},
+  vertexShader:`uniform float th;uniform vec2 res;void main(){vec4 c=projectionMatrix*modelViewMatrix*vec4(position,1.);vec3 n=normalize(normalMatrix*normal);vec2 o=n.xy;float l=length(o);o=l>1e-4?o/l:vec2(0.);c.xy+=o*th*c.w*2./res;gl_Position=c;}`,
+  fragmentShader:`uniform vec3 col;void main(){gl_FragColor=vec4(col,1.);}`});
+const lineMat=new THREE.LineBasicMaterial({color:INK});
+
+const accent=new THREE.Color('#f2b437');
+const accentMats=[];   // materials whose color follows the livery/accent
+function toon(color,o={}){return new THREE.MeshToonMaterial(Object.assign({color,gradientMap:grad},o));}
+function make(geo,mat,{outline=true,edges=true,angle=32,shadow=true}={}){
+  if(!(mat instanceof THREE.Material)) mat=toon(mat);
+  const m=new THREE.Mesh(geo,mat); m.castShadow=shadow;
+  if(outline) m.add(new THREE.Mesh(geo,outlineMat));
+  if(edges) m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo,angle),lineMat));
+  return m;
+}
+const H={wing:[],ail:[],elev:[],rud:[],engine:[],prop:[],panel:[],canopy:[]};
+const hi=(k,m)=>{H[k].push(m.material);return m;};
+function livery(){const m=toon(accent.clone());accentMats.push(m);return m;}
+function anchor(p,x,y,z){const o=new THREE.Object3D();o.position.set(x,y,z);p.add(o);return o;}
+
+/* ---------- colours ---------- */
+const BODY=0xeeebe4, WINGC=0xe2dfd7, DARK=0x2b3140, ENG=0x5f6674, FIN=0x969ca7, TIRE=0x262b35;
+
+/* ---------- aircraft ---------- */
+const plane=new THREE.Group(); plane.rotation.order='YZX'; scene.add(plane);
+const parts={};
+function part(name,off,delay){const g=new THREE.Group();plane.add(g);parts[name]={g,off:new V3(...off),delay};return g;}
+
+function lathe(profile,seg=32){const g=new THREE.LatheGeometry(profile.map(p=>new THREE.Vector2(p[0],p[1])),seg);g.rotateZ(-Math.PI/2);return g;}
+
+// fuselage
+const fus=part('fuselage',[0,0,0],0);
+const fusGeo=lathe([[0.1,-4.25],[0.2,-3.8],[0.36,-3.0],[0.55,-2.0],[0.68,-1.0],[0.72,0],[0.72,1.0],[0.69,1.6],[0.66,1.86]]);
+const fusM=make(fusGeo,BODY,{edges:false}); fusM.scale.z=0.92; fus.add(fusM);
+const tub=make(new THREE.BoxGeometry(1.45,0.24,0.86),DARK,{outline:false}); tub.position.set(0.72,0.6,0); fus.add(tub);
+// nose gear
+{const s=make(new THREE.CylinderGeometry(0.045,0.045,0.42,8),FIN);s.position.set(1.72,-0.66,0);fus.add(s);
+ const w=make(new THREE.CylinderGeometry(0.18,0.18,0.12,18),TIRE);w.rotation.x=Math.PI/2;w.position.set(1.72,-0.87,0);fus.add(w);}
+
+// airfoil wing builder (TE at local x=0, LE at +chord, span along +z)
+function airfoil(){const s=new THREE.Shape();
+  const up=[[0,0.006],[0.22,0.05],[0.48,0.083],[0.7,0.088],[0.86,0.07],[0.96,0.04],[1,0]];
+  const lo=[[0.96,-0.024],[0.86,-0.031],[0.6,-0.032],[0.3,-0.02],[0,-0.006]];
+  s.moveTo(...up[0]);up.slice(1).forEach(p=>s.lineTo(...p));lo.forEach(p=>s.lineTo(...p));return s;}
+function wingGeo(span,c0,c1,dih,th=1){
+  const g=new THREE.ExtrudeGeometry(airfoil(),{depth:span,bevelEnabled:false,steps:1});
+  const p=g.attributes.position;
+  for(let i=0;i<p.count;i++){const u=p.getX(i),y=p.getY(i),z=p.getZ(i),c=lerp(c0,c1,z/span);p.setXYZ(i,u*c,y*c*th+z*dih,z);}
+  g.computeVertexNormals();return g;}
+
+const WTE=-0.6, WY=-0.42, DIH=0.06, SPAN=4.6;
+const ail={};
+function buildWing(g,side){
+  const w=hi('wing',make(wingGeo(SPAN,1.8,1.1,DIH),WINGC)); w.position.set(WTE,WY,0); g.add(w);
+  const hinge=new THREE.Group(); hinge.position.set(WTE,WY+3.35*DIH+0.004,3.35); hinge.rotation.x=-Math.atan(DIH); g.add(hinge);
+  const a=hi('ail',make(new THREE.BoxGeometry(0.38,0.045,1.75),WINGC)); a.position.x=-0.19; hinge.add(a); ail[side]=hinge;
+  const nav=new THREE.Mesh(new THREE.SphereGeometry(0.08,12,8),new THREE.MeshBasicMaterial({color:side==='R'?0x35b86a:0xe0473c}));
+  nav.position.set(WTE+0.55,WY+SPAN*DIH+0.01,SPAN+0.03); g.add(nav);
+  const strut=make(new THREE.CylinderGeometry(0.045,0.045,0.5,8),FIN); strut.position.set(0.05,-0.62,1.3); g.add(strut);
+  const wh=make(new THREE.CylinderGeometry(0.2,0.2,0.13,18),TIRE); wh.rotation.x=Math.PI/2; wh.position.set(0.05,-0.85,1.3); g.add(wh);
+}
+const wingR=part('wingR',[0,0.25,1.7],0.45); buildWing(wingR,'R');
+const wingL=part('wingL',[0,0.25,-1.7],0.45); wingL.scale.z=-1; buildWing(wingL,'L');
+
+// horizontal tail
+const tailH=part('tailH',[-1.5,0.15,0],0.35);
+for(const s of [1,-1]){const g=new THREE.Group();g.scale.z=s;tailH.add(g);
+  const m=hi('wing',make(wingGeo(1.75,0.95,0.6,0,0.85),WINGC));m.position.set(-3.75,0.12,0);g.add(m);}
+const elevH=new THREE.Group(); elevH.position.set(-3.75,0.12,0); tailH.add(elevH);
+{const e=hi('elev',make(new THREE.BoxGeometry(0.4,0.04,3.4),WINGC));e.position.x=-0.2;elevH.add(e);}
+
+// vertical tail
+const tailV=part('tailV',[-1.5,0.95,0],0.3);
+function shapeGeo(pts,depth){const s=new THREE.Shape();s.moveTo(...pts[0]);pts.slice(1).forEach(p=>s.lineTo(...p));
+  const g=new THREE.ExtrudeGeometry(s,{depth,bevelEnabled:false});g.translate(0,0,-depth/2);return g;}
+tailV.add(hi('wing',make(shapeGeo([[-2.85,0.15],[-3.85,0.15],[-3.85,1.55],[-3.45,1.55]],0.08),WINGC)));
+tailV.add(make(shapeGeo([[-3.309,1.22],[-3.85,1.22],[-3.85,1.555],[-3.45,1.555]],0.095),livery(),{outline:false}));
+const rudH=new THREE.Group(); rudH.position.set(-3.85,0,0); tailV.add(rudH);
+{const r=hi('rud',make(new THREE.BoxGeometry(0.4,1.3,0.07),WINGC));r.position.set(-0.2,0.9,0);rudH.add(r);
+ const rt=make(new THREE.BoxGeometry(0.4,0.32,0.08),livery(),{outline:false});rt.position.set(-0.2,1.39,0);rudH.add(rt);}
+
+// cowling
+const cowl=part('cowling',[1.5,0.35,0],0.15);
+cowl.add(make(lathe([[0.66,1.86],[0.66,2.1],[0.58,2.4],[0.44,2.6],[0.34,2.66]]),livery(),{edges:false}));
+
+// propeller
+const propP=part('prop',[2.7,0.35,0],0.1);
+const spin=new THREE.Group(); spin.position.x=2.66; propP.add(spin);
+{const c=hi('prop',make(new THREE.ConeGeometry(0.28,0.44,20),FIN,{edges:false}));c.rotation.z=-Math.PI/2;c.position.x=0.2;spin.add(c);
+ for(const s of [1,-1]){const b=hi('prop',make(new THREE.BoxGeometry(0.05,1.05,0.17),DARK));b.position.set(0.05,s*0.62,0);b.rotation.y=0.38*s;spin.add(b);}}
+const discMat=new THREE.MeshBasicMaterial({color:0x1c2333,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide});
+const disc=new THREE.Mesh(new THREE.CircleGeometry(1.17,48),discMat); disc.rotation.y=Math.PI/2; disc.position.x=2.71; propP.add(disc);
+const ringMat=new THREE.MeshBasicMaterial({color:accent.clone(),transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide});
+const ring=new THREE.Mesh(new THREE.RingGeometry(1.12,1.19,64),ringMat); ring.rotation.y=Math.PI/2; ring.position.x=2.72; propP.add(ring);
+
+// engine (flat four)
+const engP=part('engine',[0.6,1.4,0],0.25);
+const eng=new THREE.Group(); eng.position.set(2.2,0,0); engP.add(eng);
+eng.add(hi('engine',make(new THREE.BoxGeometry(0.5,0.34,0.36),ENG)));
+for(const dx of [-0.12,0.12]) for(const s of [1,-1]){
+  const cy=hi('engine',make(new THREE.CylinderGeometry(0.1,0.1,0.26,14),ENG,{edges:false}));cy.rotation.x=Math.PI/2;cy.position.set(dx,0.02,s*0.31);eng.add(cy);
+  for(let f=0;f<3;f++){const fin=make(new THREE.CylinderGeometry(0.135,0.135,0.018,16),FIN,{edges:false,outline:f===2});fin.rotation.x=Math.PI/2;fin.position.set(dx,0.02,s*(0.23+f*0.07));eng.add(fin);}}
+{const sh=hi('engine',make(new THREE.CylinderGeometry(0.05,0.05,0.42,10),FIN,{edges:false}));sh.rotation.z=Math.PI/2;sh.position.x=0.42;eng.add(sh);}
+
+// cockpit interior
+const panelP=part('panel',[0,1.0,0],0.05);
+const panel=make(new THREE.BoxGeometry(0.1,0.34,0.8),DARK); panel.position.set(1.3,0.86,0); panel.rotation.z=-0.22; panelP.add(panel);
+const glare=make(new THREE.BoxGeometry(0.22,0.04,0.84),DARK); glare.position.set(1.33,1.04,0); panelP.add(glare);
+function screenTex(){const c=document.createElement('canvas');c.width=256;c.height=184;const t=new THREE.CanvasTexture(c);t.anisotropy=4;return {c,ctx:c.getContext('2d'),t};}
+const pfd=screenTex(), mfd=screenTex();
+const scrMats=[];
+for(const [s,z] of [[pfd,-0.2],[mfd,0.2]]){const m=new THREE.MeshBasicMaterial({map:s.t,color:0x222222});scrMats.push(m);H.panel.push(m);
+  const q=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.245),m);q.rotation.y=-Math.PI/2;q.position.set(-0.052,0.0,z);panel.add(q);}
+for(const x of [0.2,-0.45]){const sb=make(new THREE.BoxGeometry(0.1,0.42,0.46),0x3d4556);sb.position.set(x,0.86,0);sb.rotation.z=0.18;panelP.add(sb);
+  const sc=make(new THREE.BoxGeometry(0.42,0.08,0.46),0x3d4556);sc.position.set(x+0.2,0.68,0);panelP.add(sc);}
+const stick=make(new THREE.CylinderGeometry(0.025,0.025,0.32,8),DARK); stick.position.set(0.72,0.84,0); panelP.add(stick);
+
+// canopy (hinged at rear)
+const canP=part('canopy',[0,1.75,0],0);
+const canPivot=new THREE.Group(); canPivot.position.set(-0.08,0.62,0); canP.add(canPivot);
+const canG=new THREE.Group(); canG.position.set(0.82,0,0); canG.scale.set(0.84,0.5,0.52); canPivot.add(canG);
+const glassMat=toon(0xa9cde4,{transparent:true,opacity:0.42,depthWrite:false}); H.canopy.push(glassMat);
+const glass=new THREE.Mesh(new THREE.SphereGeometry(1,32,14,0,Math.PI*2,0,Math.PI/2),glassMat); canG.add(glass);
+const frameMat=toon(DARK);
+{const rim=new THREE.Mesh(new THREE.TorusGeometry(1,0.06,6,48),frameMat);rim.rotation.x=Math.PI/2;canG.add(rim);
+ const arch=new THREE.Mesh(new THREE.TorusGeometry(1,0.05,6,32,Math.PI),frameMat);arch.rotation.y=Math.PI/2;arch.position.x=-0.15;canG.add(arch);}
+
+/* ---------- overlays attached to the aircraft ---------- */
+function arrow(len,mat){const g=new THREE.Group();
+  const sg=new THREE.CylinderGeometry(0.07,0.07,len-0.38,12),hg=new THREE.ConeGeometry(0.2,0.38,16);
+  const s=new THREE.Mesh(sg,mat);s.position.y=(len-0.38)/2;s.add(new THREE.Mesh(sg,outlineMat));
+  const h=new THREE.Mesh(hg,mat);h.position.y=len-0.19;h.add(new THREE.Mesh(hg,outlineMat));g.add(s,h);return g;}
+const accentBasic=new THREE.MeshBasicMaterial({color:accent.clone()}); accentMats.push(accentBasic);
+const liftA=arrow(1.5,accentBasic); liftA.position.set(0.35,-0.05,-2.6); plane.add(liftA);
+const weightA=arrow(1.5,new THREE.MeshBasicMaterial({color:0x7a7f89})); weightA.rotation.z=Math.PI; weightA.position.set(0.25,-0.8,0); plane.add(weightA);
+
+function arc(R){const g=new THREE.Group(),a=Math.PI*1.25;
+  const tg=new THREE.TorusGeometry(R,0.06,8,48,a);const t=new THREE.Mesh(tg,accentBasic);t.add(new THREE.Mesh(tg,outlineMat));
+  const cg=new THREE.ConeGeometry(0.2,0.42,14);const c=new THREE.Mesh(cg,accentBasic);c.add(new THREE.Mesh(cg,outlineMat));
+  c.position.set(R*Math.cos(a),R*Math.sin(a),0);c.rotation.z=a;g.add(t,c);g.visible=false;return g;}
+const arcRoll=arc(1.05); arcRoll.rotation.y=Math.PI/2; arcRoll.position.set(3.55,0,0); plane.add(arcRoll);
+const arcPitch=arc(1.2); arcPitch.position.set(-0.4,0.2,-5.4); plane.add(arcPitch);
+const arcYaw=arc(1.5); arcYaw.rotation.x=Math.PI/2; arcYaw.position.set(-0.3,2.0,0); plane.add(arcYaw);
+
+// airflow streamlines over the near (left) wing
+const flow=new THREE.Group(); plane.add(flow);
+const flowLines=[], dots=[];
+const BLUE=0x2f7fca, RED=0xd9542f;
+for(const z of [-1.9,-3.3]){const w=WY+Math.abs(z)*DIH;
+  const U=[[5.5,.55],[2.5,.52],[1.4,.45],[.8,.38],[.2,.36],[-.5,.32],[-1.6,.15],[-3.5,-.1],[-6,-.35]];
+  const L=[[5.5,-.55],[2.5,-.52],[1.4,-.45],[.8,-.2],[.2,-.2],[-.5,-.22],[-1.6,-.42],[-3.5,-.65],[-6,-.9]];
+  const paths=[[U,0,BLUE,0.36],[U,0.32,BLUE,0.3],[L,0,RED,0.22],[L,-0.3,RED,0.2]];
+  for(const [P,dy,col,speed] of paths){
+    const k=dy===0?1:0.55;
+    const curve=new THREE.CatmullRomCurve3(P.map(([x,y])=>new V3(x,w+y*(dy?k:1)+dy,z)));
+    const lm=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0});
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(80)),lm);flow.add(line);flowLines.push(lm);
+    const dm=new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0});
+    for(let i=0;i<9;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(0.065,8,6),dm);flow.add(d);dots.push({d,curve,u:i/9,speed,dm});}
+  }}
+
+/* ---------- ground ---------- */
+const ground=new THREE.Group(); scene.add(ground);
+function rrect(w,h,r){const s=new THREE.Shape(),x=-w/2,y=-h/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);
+  s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s;}
+const padMat=new THREE.MeshBasicMaterial({color:0xf6deb0});
+const pad=new THREE.Mesh(new THREE.ShapeGeometry(rrect(28,18,1.4),8),padMat); pad.rotation.x=-Math.PI/2; ground.add(pad);
+const padLineMat=new THREE.LineDashedMaterial({color:0x1c2333,dashSize:0.28,gapSize:0.2,transparent:true,opacity:0.7});
+{const pts=rrect(27.2,17.2,1.1).getPoints(16).map(p=>new V3(p.x,0.012,-p.y));pts.push(pts[0].clone());
+ const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),padLineMat);l.computeLineDistances();ground.add(l);
+ const outer=new THREE.Line(new THREE.BufferGeometry().setFromPoints(rrect(28,18,1.4).getPoints(16).map(p=>new V3(p.x,0.012,-p.y))),new THREE.LineBasicMaterial({color:0x1c2333}));ground.add(outer);padLineMat.userData.solid=outer.material;
+ const circ=[];for(let i=0;i<=96;i++){const a=i/96*Math.PI*2;circ.push(new V3(Math.cos(a)*6.4,0.012,Math.sin(a)*6.4));}
+ const c=new THREE.Line(new THREE.BufferGeometry().setFromPoints(circ),new THREE.LineDashedMaterial({color:0x1c2333,dashSize:0.2,gapSize:0.22,transparent:true,opacity:0.35}));c.computeLineDistances();ground.add(c);padLineMat.userData.circ=c.material;}
+const runwayMat=new THREE.MeshBasicMaterial({color:0x3b4252});
+const runway=new THREE.Mesh(new THREE.BoxGeometry(17,0.04,2.7),runwayMat); runway.position.set(-3.6,0.02,0); ground.add(runway);
+{const wm=new THREE.MeshBasicMaterial({color:0xf3efe6});
+ for(let x=-9.4;x<4.6;x+=1.5){const d=new THREE.Mesh(new THREE.BoxGeometry(0.75,0.01,0.09),wm);d.position.set(x,0.045,0);ground.add(d);}
+ for(let i=0;i<6;i++){const d=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.01,0.16),wm);d.position.set(-11.5,0.045,-1.0+i*0.4);ground.add(d);}
+ const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.fillStyle='#f3efe6';g.font='bold 92px "JetBrains Mono",monospace';g.textAlign='center';g.textBaseline='middle';g.fillText('09',64,68);
+ const num=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true}));
+ num.rotation.x=-Math.PI/2;num.rotation.z=-Math.PI/2;num.position.set(-10.2,0.046,0);ground.add(num);}
+const shadowPlane=new THREE.Mesh(new THREE.PlaneGeometry(28,18),new THREE.ShadowMaterial({opacity:0.2}));
+shadowPlane.rotation.x=-Math.PI/2; shadowPlane.position.y=0.05; shadowPlane.receiveShadow=true; ground.add(shadowPlane);
+// windsock
+const sock=new THREE.Group(); sock.position.set(-9.5,0,-5.6); ground.add(sock);
+{const pole=make(new THREE.CylinderGeometry(0.05,0.05,2.4,8),FIN);pole.position.y=1.2;sock.add(pole);
+ const arm=new THREE.Group();arm.position.y=2.3;sock.add(arm);sock.userData.arm=arm;
+ const segs=[[0.24,0.2,livery()],[0.2,0.16,toon(0xf3efe6)],[0.16,0.12,livery()]];
+ segs.forEach(([r1,r2,m],i)=>{const g=new THREE.CylinderGeometry(r2,r1,0.42,14,1,true);const s=new THREE.Mesh(g,m);s.material.side=THREE.DoubleSide;
+   s.add(new THREE.Mesh(g,outlineMat));s.rotation.z=-Math.PI/2;s.position.x=0.25+i*0.42;s.castShadow=true;arm.add(s);});}
+// wheel chocks + tow bar, a small bit of ramp life
+{const ch=make(new THREE.BoxGeometry(0.3,0.16,0.5),0xe0b13a);ch.position.set(6.5,0.08,4.6);ground.add(ch);accentMats.push(ch.material);
+ const ch2=ch.clone();ch2.position.set(7.1,0.08,4.9);ch2.rotation.y=0.5;ground.add(ch2);
+ const cone=make(new THREE.ConeGeometry(0.22,0.6,16),livery());cone.position.set(8.4,0.3,-5.2);ground.add(cone);
+ const cone2=cone.clone();cone2.position.set(9.4,0.3,-4.5);ground.add(cone2);}
+
+/* ---------- anchors for labels ---------- */
+const A={
+  tipR:anchor(wingR,0.2,0.2,4.7), noseGear:anchor(fus,1.72,-1.1,0.35), spinner:anchor(propP,3.0,0.85,0),
+  canopy:anchor(canP,0.6,1.35,0), pfd:anchor(panelP,1.2,1.35,-0.35), mfd:anchor(panelP,1.2,1.35,0.4), stick:anchor(panelP,0.6,1.15,0.15),
+  pCanopy:anchor(canP,0.7,1.25,0), pPanel:anchor(panelP,1.25,1.25,0.6), pCowl:anchor(cowl,2.25,0.85,0), pProp:anchor(propP,2.8,1.4,0),
+  pEngine:anchor(engP,2.2,0.42,0), pWing:anchor(wingL,0.2,-0.1,3.2), pTail:anchor(tailV,-3.6,1.8,0), pFus:anchor(fus,-1.6,0.9,0),
+  eTop:anchor(engP,2.2,0.42,0), eCyl:anchor(engP,2.05,0.3,-0.55), eShaft:anchor(engP,2.75,0.25,0),
+  upper:anchor(flow,1.6,0.75,-1.9), lower:anchor(flow,1.6,-1.15,-3.3), liftTip:anchor(liftA,0,1.85,0), weight:anchor(weightA,0,1.95,0),
+  ailR:anchor(wingR,-0.6,0.35,3.6), elev:anchor(tailH,-4.0,0.35,-1.5), rud:anchor(tailV,-4.1,1.85,0),
+  above:anchor(plane,0,1.8,0)
+};
+
+/* ---------- the story ---------- */
+const HOME={tx:0,ty:1.0,tz:0,zoom:1,az:-40,el:30};
+const BASE=Object.assign({},HOME,{px:0,py:REST,pz:0,roll:0,pitch:0,yaw:0,canopy:0,explode:0,prop:0,ail:0,elev:0,rud:0,
+  flow:0,lift:0,glow:0,hiWing:0,hiAil:0,hiElev:0,hiRud:0,hiEngine:0,hiProp:0,hiPanel:0,hiCanopy:0,arcRoll:0,arcPitch:0,arcYaw:0});
+
+function rollRun(t){ // takeoff path, used by fn + labels
+  let px,py=REST,pz=0,yaw=0;
+  if(t<1.2) px=-10;
+  else if(t<5.2){const u=(t-1.2)/4;px=-10+10*u*u;}
+  else if(t<6.4){px=5*(t-5.2);py=REST+1.6*sm((t-5.2)/1.2);}
+  else{const ph=1.15*(t-6.4);px=6+3.5*Math.sin(ph);pz=-3.5+3.5*Math.cos(ph);py=REST+1.6+0.7*seg(t,6.4,8.4);yaw=ph%(Math.PI*2);}
+  return {px,py,pz,yaw};
+}
+
+const STEPS=[
+{name:'整机亮相',dur:5.6,
+ cap:'一架双座教练级小飞机：低单翼，前三点起落架，机头一台活塞发动机带动两叶螺旋桨。',
+ fn:t=>{const k=seg(t,0.3,3.8);return{zoom:lerp(3.1,1,k),tx:lerp(2.5,0,k),ty:lerp(1.45,1.0,k),az:lerp(-14,-40,k),el:lerp(9,30,k),prop:8*seg(t,1.2,2.2)*(1-seg(t,4.4,5.4))};},
+ labels:[{t0:3.6,text:'翼展 9.2 米',a:A.tipR},{t0:4.0,text:'前三点起落架',a:A.noseGear},{t0:4.4,text:'两叶螺旋桨',a:A.spinner}],
+ tags:t=>({span:[0,t>3.4],len:[0,t>3.4],prop:[0,t>4.3]})},
+{name:'打开座舱',dur:6,
+ cap:'座舱盖向后掀起。仪表板上是两块玻璃屏：左边看姿态、速度和高度，右边看发动机状态和航图。',
+ fn:t=>{const k=seg(t,0.6,2.6);return{canopy:seg(t,0.2,1.6),az:lerp(-40,-148,k),el:lerp(30,36,k),zoom:lerp(1,2.7,k),tx:lerp(0,0.95,k),ty:lerp(1.0,REST+0.95,k),
+   glow:seg(t,2.2,3.0),hiPanel:0.8*seg(t,2.4,3.0)*(1-seg(t,4.6,5.6)),hiCanopy:seg(t,0.2,0.8)*(1-seg(t,1.4,2))};},
+ labels:[{t0:0.6,t1:2.4,text:'座舱盖向后掀起',a:A.canopy},{t0:3.0,text:'主飞行显示 PFD',a:A.pfd},{t0:3.4,text:'多功能显示 MFD',a:A.mfd},{t0:3.9,text:'操纵杆',a:A.stick}],
+ tags:t=>({avi:[0,t>2.8]})},
+{name:'拆开看看',dur:10,
+ cap:'座舱盖、整流罩、螺旋桨、发动机、尾翼、机翼依次分开，一共 10 个部件。镜头推近发动机：四个气缸水平对置，曲轴直接带动螺旋桨。',
+ fn:t=>{const e=t<7.4?seg(t,0.3,2.8):1-seg(t,7.6,9.4);const k=seg(t,3.6,5.0)*(1-seg(t,6.4,7.6));
+   return{explode:e,zoom:lerp(lerp(1,0.8,seg(t,0.3,2.2)),2.9,k),az:lerp(-40,-62,k),el:lerp(32,20,k),tx:lerp(0,2.8,k),ty:lerp(1.5,REST+1.4,k),glow:0.6*e,hiEngine:0.75*k};},
+ labels:[
+   {t0:2.5,t1:3.7,text:'座舱盖',a:A.pCanopy},{t0:2.6,t1:3.7,text:'仪表板',a:A.pPanel},{t0:2.7,t1:3.7,text:'整流罩',a:A.pCowl},{t0:2.8,t1:3.7,text:'螺旋桨',a:A.pProp},
+   {t0:2.9,t1:3.7,text:'机翼',a:A.pWing},{t0:3.0,t1:3.7,text:'尾翼',a:A.pTail},{t0:3.1,t1:3.7,text:'机身',a:A.pFus},
+   {t0:5.0,t1:6.5,text:'水平对置 4 缸',a:A.eTop,hot:1},{t0:5.4,t1:6.5,text:'气缸 + 散热片',a:A.eCyl},{t0:5.8,t1:6.5,text:'曲轴 → 螺旋桨',a:A.eShaft}],
+ tags:t=>({parts:[t>2.2&&t<8.8?'10 个':'1 架',t>2.2&&t<8.8],eng:[0,t>4.6&&t<6.8]})},
+{name:'升力从哪来',dur:8,
+ cap:'机翼上表面弯、下表面平。气流流过时，上方流得更快、压强更低，下方压强更高，这个压力差把飞机托了起来。',
+ fn:t=>{const k=seg(t,0.4,2.2);return{py:REST+1.3*seg(t,0,1.6),prop:32,az:lerp(-40,-82,k),el:lerp(30,13,k),zoom:lerp(1,1.75,k),
+   tx:lerp(0,0.3,k),ty:lerp(1.0,REST+1.1,k),tz:lerp(0,-2.6,k),flow:seg(t,1.8,2.8),lift:seg(t,3.6,4.6),hiWing:0.55*seg(t,3.4,4.2)*(1-seg(t,6.4,7.4))};},
+ labels:[{t0:2.6,text:'上表面：流速快 · 压强低',a:A.upper,cls:'blue'},{t0:3.0,text:'下表面：压强高',a:A.lower,cls:'red'},
+   {t0:4.4,text:'升力',a:A.liftTip,hot:1},{t0:4.8,text:'重力',a:A.weight}],
+ tags:t=>({lift:[t>4.6?'= 重力':'—',t>4.6],att:['飞行',false]})},
+{name:'三轴操纵',dur:11,
+ cap:'三组舵面各管一个方向：副翼一上一下让飞机滚转，升降舵让机头抬起或压低，方向舵让机头左右偏转。',
+ fn:t=>{const p1=seg(t,0.8,1.6)*(1-seg(t,3.2,3.8)),p2=seg(t,4.0,4.8)*(1-seg(t,6.4,7.0)),p3=seg(t,7.2,8.0)*(1-seg(t,9.6,10.2));
+   return{py:REST+1.6,prop:32,az:-36,el:27,zoom:1.02,ty:REST+1.2,
+   ail:p1,roll:24*p1,arcRoll:p1,hiAil:p1,elev:p2,pitch:14*p2,arcPitch:p2,hiElev:p2,rud:p3,yaw:0.38*p3,arcYaw:p3,hiRud:p3};},
+ labels:[{t0:1.4,t1:3.6,text:'副翼一上一下 → 滚转',a:A.ailR,hot:1},{t0:4.6,t1:6.8,text:'升降舵上偏 → 抬头',a:A.elev,hot:1},{t0:7.8,t1:10.0,text:'方向舵偏转 → 机头左转',a:A.rud,hot:1}],
+ tags:(t,S)=>{const a=S.roll>2?`滚转 ${Math.round(S.roll)}°`:S.pitch>2?`俯仰 ${Math.round(S.pitch)}°`:S.yaw>0.04?`偏航 ${Math.round(S.yaw/D)}°`:'平飞';
+   return{att:[a,a!=='平飞'],ctrl:[0,a!=='平飞'],lift:['= 重力',false]};}},
+{name:'起飞滑跑',dur:9.5,
+ cap:'油门推满，飞机沿跑道加速。速度够了以后抬起机头，升力超过重力，飞机离地、爬升、转弯。',
+ fn:t=>{const r=rollRun(t);const k=seg(t,5.2,7.2);
+   return Object.assign(r,{pitch:9*seg(t,4.5,5.2)*(1-seg(t,6.0,6.8)),roll:-20*seg(t,6.4,7.4),prop:34,
+   tx:lerp(clamp(r.px*0.6,-6,2),4,k),ty:lerp(1.1,REST+1.4,k),tz:lerp(0,-2.4,k),zoom:lerp(0.98,0.9,k)});},
+ labels:[{t0:1.4,a:A.above,hot:1,text:t=>{if(t<5.2){const u=clamp((t-1.2)/4);return `滑跑 ${Math.round(u*u*160)} 米 · ${Math.round(u*105)} km/h`;}
+   return t<6.6?'抬头，离地！':'爬升 · 左转盘旋';}}],
+ tags:t=>{const u=clamp((t-1.2)/4);return{roll:[t<5.4?`${Math.round(u*u*160)} m`:'约 180 m',t>1.2],lift:[t>5.2?'> 重力':'< 重力',t>5.2],att:[t>5.2?'爬升':'滑跑',false]};}},
+{name:'降落归位',dur:7,
+ cap:'收油门下滑，接地前拉平，主轮先着地，滑跑减速，再转回停机位。',
+ fn:t=>{const u=clamp(t/3.6);return{px:10-10*(1-(1-u)*(1-u)),py:REST+2.4*Math.pow(clamp(1-t/2.5),1.6),pitch:7*seg(t,1.5,2.3)*(1-seg(t,2.5,3.1)),
+   yaw:Math.PI*(1-seg(t,3.9,5.6)),prop:30*(1-seg(t,2.6,4.2)),tx:lerp(4,0,seg(t,0,4)),ty:lerp(1.6,1.0,seg(t,0,4)),zoom:lerp(0.9,1,seg(t,2,5))};},
+ labels:[{t0:0.4,t1:2.2,text:'收油门 · 下滑',a:A.above},{t0:2.4,t1:3.8,text:'接地',a:A.above,hot:1},{t0:5.4,text:'回到停机位',a:A.above}],
+ tags:t=>({att:[t<2.5?'下滑':'停放',false]})}
+];
+
+const TAGS=[['span','翼展','9.2 m'],['len','机长','7.0 m'],['eng','发动机','4 缸 × 1'],['prop','螺旋桨','2 叶'],['avi','航电','2 块屏'],
+  ['parts','部件','1 架'],['ctrl','舵面','3 组'],['att','姿态','停放'],['lift','升力','—'],['roll','起飞滑跑','约 180 m']];
+
+/* ---------- UI ---------- */
+const stepsEl=$('#steps'), capEl=$('#caption'), tagsEl=$('#tags'), autoBtn=$('#auto');
+const btns=STEPS.map((s,i)=>{const b=document.createElement('button');b.type='button';b.className='step';b.setAttribute('role','tab');b.id='step-'+i;
+  b.innerHTML=`<span class="n">${i+1}</span><span>${s.name}</span><span class="bar"></span>`;b.onclick=()=>go(i,true);stepsEl.appendChild(b);return b;});
+const tagEls={};
+for(const [k,l,v] of TAGS){const e=document.createElement('span');e.className='tag';e.innerHTML=`${l} <b>${v}</b>`;tagsEl.appendChild(e);tagEls[k]={e,b:e.querySelector('b'),def:v,last:''};}
+const SW=['#f2b437','#e8553a','#4fb79a','#4a90d9','#e98bb0'],SWN=['琥珀','朱红','松绿','天蓝','樱粉'];
+const swBtns=SW.map((c,i)=>{const b=document.createElement('button');b.type='button';b.className='sw';b.style.background=c;b.setAttribute('aria-label','涂装：'+SWN[i]);
+  b.setAttribute('aria-pressed',i?'false':'true');b.onclick=()=>setAccent(i);$('#swatches').appendChild(b);return b;});
+function setAccent(i){swBtns.forEach((b,j)=>b.setAttribute('aria-pressed',i===j?'true':'false'));
+  document.documentElement.style.setProperty('--accent',SW[i]);accent.set(SW[i]);for(const m of accentMats)m.color.copy(accent);ringMat.color.copy(accent);}
+let auto=!reduce;
+function setAuto(v){auto=v;autoBtn.classList.toggle('on',v);autoBtn.setAttribute('aria-pressed',String(v));autoBtn.querySelector('span').textContent=v?'自动讲解':'自动讲解（已暂停）';}
+autoBtn.onclick=()=>setAuto(!auto); setAuto(auto);
+addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(stepIdx+1,true);if(e.key==='ArrowLeft')go(stepIdx-1,true);});
+
+/* ---------- theme ---------- */
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function readTheme(){padMat.color.set(css('--pad'));runwayMat.color.set(css('--runway'));const ink=new THREE.Color(css('--ink'));
+  padLineMat.color.copy(ink);padLineMat.userData.solid.color.copy(ink);padLineMat.userData.circ.color.copy(ink);}
+readTheme(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change',readTheme);
+new MutationObserver(readTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ---------- state machine ---------- */
+let stepIdx=0, stepT=0, cur, snap, labels=[], propAngle=0, clock=0;
+const BLEND=reduce?0.5:1.0;
+function desired(i,t){return Object.assign({},BASE,STEPS[i].fn(t));}
+function buildLabels(){layer.textContent='';labels=(STEPS[stepIdx].labels||[]).map(L=>{const el=document.createElement('div');
+  el.className='lbl'+(L.hot?' hot':'')+(L.cls?' '+L.cls:'');layer.appendChild(el);return Object.assign({el,lastText:''},L);});}
+function go(i,user){if(user)setAuto(false);stepIdx=(i+STEPS.length)%STEPS.length;stepT=0;snap=Object.assign({},cur);buildLabels();
+  btns.forEach((b,j)=>{b.classList.toggle('on',j===stepIdx);b.setAttribute('aria-selected',j===stepIdx?'true':'false');b.querySelector('.bar').style.width='0';});
+  if(user)btns[stepIdx].scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});
+  capEl.textContent=STEPS[stepIdx].cap;}
+cur=desired(0,0); go(0,false);
+
+/* ---------- screens ---------- */
+function drawPFD(roll,pitch,t){const g=pfd.ctx,w=256,h=184;g.save();g.fillStyle='#0b0f16';g.fillRect(0,0,w,h);
+  g.beginPath();g.rect(4,4,w-8,h-8);g.clip();g.translate(w/2,h/2-6);g.rotate(-roll);const py=pitch*3.2;
+  g.fillStyle='#3a7fc6';g.fillRect(-320,-320+py,640,320);g.fillStyle='#8a5a2c';g.fillRect(-320,py,640,320);
+  g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.moveTo(-320,py);g.lineTo(320,py);g.stroke();
+  g.lineWidth=1.5;for(const p of [-20,-10,10,20]){const y=py-p*3.2;const l=Math.abs(p)===10?22:34;g.beginPath();g.moveTo(-l,y);g.lineTo(l,y);g.stroke();}
+  g.restore();g.strokeStyle='#ffd23f';g.lineWidth=4;g.beginPath();g.moveTo(w/2-44,h/2-6);g.lineTo(w/2-14,h/2-6);g.lineTo(w/2,h/2+4);g.lineTo(w/2+14,h/2-6);g.lineTo(w/2+44,h/2-6);g.stroke();
+  g.fillStyle='rgba(8,11,17,.78)';g.fillRect(6,26,44,118);g.fillRect(w-52,26,46,118);g.fillRect(70,h-26,116,22);
+  g.fillStyle='#e9f1ff';g.font='bold 16px "JetBrains Mono",monospace';g.textAlign='center';
+  g.fillText(String(Math.round(105+Math.sin(t*0.7)*2)),28,91);g.fillText(String(1500+Math.round(Math.sin(t*0.4)*20)),w-29,91);
+  g.font='12px "JetBrains Mono",monospace';g.fillText('HDG 090',128,h-10);g.fillStyle='#7ee08f';g.fillText('IAS',28,40);g.fillText('ALT',w-29,40);
+  pfd.t.needsUpdate=true;}
+function drawMFD(t){const g=mfd.ctx,w=256,h=184;g.fillStyle='#0b0f16';g.fillRect(0,0,w,h);
+  g.strokeStyle='#2b3546';g.lineWidth=1;for(let x=130;x<w;x+=20){g.beginPath();g.moveTo(x,8);g.lineTo(x,h-8);g.stroke();}for(let y=8;y<h;y+=20){g.beginPath();g.moveTo(130,y);g.lineTo(w-8,y);g.stroke();}
+  g.strokeStyle='#e98bf0';g.lineWidth=3;g.beginPath();g.moveTo(150,160);g.lineTo(190,110);g.lineTo(230,70);g.lineTo(240,30);g.stroke();
+  const pp=(t*0.08)%1;g.fillStyle='#fff';g.beginPath();const px=150+pp*80,py=160-pp*90;g.arc(px,py,5,0,7);g.fill();
+  g.lineWidth=8;g.strokeStyle='#2b3546';g.beginPath();g.arc(62,66,38,Math.PI*0.75,Math.PI*2.25);g.stroke();
+  const v=0.72+Math.sin(t*1.3)*0.03;g.strokeStyle='#47d16b';g.beginPath();g.arc(62,66,38,Math.PI*0.75,Math.PI*(0.75+1.5*v));g.stroke();
+  g.fillStyle='#e9f1ff';g.textAlign='center';g.font='bold 16px "JetBrains Mono",monospace';g.fillText(String(Math.round(2400+Math.sin(t*1.3)*90)),62,72);
+  g.font='11px "JetBrains Mono",monospace';g.fillStyle='#7ee08f';g.fillText('RPM',62,118);
+  for(const [i,lab,val] of [[0,'FUEL L',0.8],[1,'FUEL R',0.76],[2,'OIL',0.6]]){const y=134+i*16;g.fillStyle='#9aa6b8';g.textAlign='left';g.fillText(lab,12,y+8);
+    g.fillStyle='#2b3546';g.fillRect(64,y,56,8);g.fillStyle='#47d16b';g.fillRect(64,y,56*val,8);}
+  mfd.t.needsUpdate=true;}
+
+/* ---------- resize ---------- */
+const tmp=new V3();
+let W=1,Hh=1;
+function resize(){const r=stage.getBoundingClientRect();W=Math.max(1,r.width);Hh=Math.max(1,r.height);renderer.setSize(W,Hh,false);
+  const asp=W/Hh,half=Math.max(5.6,9.4/asp);cam.left=-half*asp;cam.right=half*asp;cam.top=half;cam.bottom=-half;cam.updateProjectionMatrix();
+  renderer.getDrawingBufferSize(outlineMat.uniforms.res.value);}
+new ResizeObserver(resize).observe(stage); resize();
+
+/* ---------- frame ---------- */
+const dirV=new V3();
+function setHi(key,v){const pulse=v*(0.78+0.22*Math.sin(clock*6));for(const m of H[key]){if(m.emissive)m.emissive.setRGB(accent.r*pulse*0.6,accent.g*pulse*0.6,accent.b*pulse*0.6);}}
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;stepT+=dt;
+  const st=STEPS[stepIdx];
+  if(auto&&stepT>st.dur+1.4){go(stepIdx+1,false);}
+  const d=desired(stepIdx,stepT),b=sm(clamp(stepT/BLEND));
+  for(const k in d)cur[k]=lerp(snap[k],d[k],b);
+  const S=cur;
+
+  plane.position.set(S.px,S.py,S.pz); plane.rotation.set(S.roll*D,S.yaw,S.pitch*D);
+  canPivot.rotation.z=S.canopy*0.95;
+  for(const n in parts){const p=parts[n];const k=sm(clamp(S.explode*1.6-p.delay));p.g.position.copy(p.off).multiplyScalar(k);}
+  ail.R.rotation.z=-S.ail*0.45; ail.L.rotation.z=S.ail*0.45; elevH.rotation.z=-S.elev*0.5; rudH.rotation.y=-S.rud*0.5;
+  propAngle+=S.prop*dt; spin.rotation.x=propAngle;
+  const blur=clamp((S.prop-10)/18); discMat.opacity=blur*0.16; ringMat.opacity=blur*0.8; disc.visible=ring.visible=blur>0.01;
+  // flow
+  flow.visible=S.flow>0.01; if(flow.visible){for(const m of flowLines)m.opacity=S.flow*0.45;
+    for(const o of dots){o.u=(o.u+o.speed*dt)%1;o.curve.getPointAt(o.u,o.d.position);o.dm.opacity=S.flow*Math.min(1,Math.sin(o.u*Math.PI)*3);}}
+  liftA.visible=weightA.visible=S.lift>0.01; liftA.scale.set(1,Math.max(0.01,S.lift),1); weightA.scale.set(1,Math.max(0.01,S.lift),1);
+  for(const [g,v] of [[arcRoll,S.arcRoll],[arcPitch,S.arcPitch],[arcYaw,S.arcYaw]]){g.visible=v>0.02;g.scale.setScalar(Math.max(0.01,v));}
+  setHi('wing',S.hiWing);setHi('ail',S.hiAil);setHi('elev',S.hiElev);setHi('rud',S.hiRud);setHi('engine',S.hiEngine);setHi('prop',S.hiProp);setHi('canopy',S.hiCanopy);
+  for(const m of scrMats)m.color.setScalar(0.13+0.87*S.glow+0.15*S.hiPanel*Math.sin(clock*6));
+  if(S.glow>0.01){drawPFD(Math.sin(clock*0.6)*0.12,Math.sin(clock*0.45)*3,clock);drawMFD(clock);}
+  sock.userData.arm.rotation.y=0.35+Math.sin(clock*1.3)*0.12; sock.userData.arm.rotation.z=-0.08+Math.sin(clock*2.1)*0.04;
+
+  // camera
+  const az=S.az*D,el=S.el*D; dirV.set(Math.cos(el)*Math.cos(az),Math.sin(el),Math.cos(el)*Math.sin(az));
+  cam.position.set(S.tx,S.ty,S.tz).addScaledVector(dirV,80); cam.lookAt(S.tx,S.ty,S.tz); cam.zoom=S.zoom; cam.updateProjectionMatrix();
+  scene.updateMatrixWorld();
+
+  // labels
+  for(const L of labels){let o=seg(stepT,L.t0,L.t0+0.35);if(L.t1!=null)o*=1-seg(stepT,L.t1-0.35,L.t1);
+    if(o<0.01){if(L.el.style.opacity!=='0')L.el.style.opacity='0';continue;}
+    const txt=typeof L.text==='function'?L.text(stepT):L.text; if(txt!==L.lastText){L.el.textContent=txt;L.lastText=txt;}
+    L.a.getWorldPosition(tmp).project(cam);const x=(tmp.x+1)/2*W,y=(1-tmp.y)/2*Hh;
+    L.el.style.opacity=o.toFixed(3);L.el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-100%)`;}
+
+  // tags
+  const T=st.tags?st.tags(stepT,S):{};
+  for(const k in tagEls){const te=tagEls[k];let v=te.def,h=false;
+    if(k==='att')v=S.py>REST+0.3?'飞行':'停放';
+    if(T[k]){if(T[k][0])v=T[k][0];h=!!T[k][1];}
+    const key=v+'|'+h;if(key!==te.last){te.last=key;te.b.textContent=v;te.e.classList.toggle('hi',h);}}
+  btns[stepIdx].querySelector('.bar').style.width=(clamp(stepT/st.dur)*100).toFixed(1)+'%';
+
+  renderer.render(scene,cam);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.__plane={go:i=>go(i,true),seek:t=>{stepT=t;}};
+})();
+</script>
+
+</body>
+</html>
